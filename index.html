@@ -1,63 +1,1061 @@
 <!DOCTYPE html>
 <html lang="ko">
-  <head>
+<head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>건설자료실 - 건설인을 위한 지식 공유</title>
-    <!-- Use Tailwind CDN for simplicity in this setup -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['"Noto Sans KR"', 'sans-serif'],
-            },
-            colors: {
-              primary: '#4f46e5',
-              secondary: '#1e293b',
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans KR"', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#4f46e5',
+                        secondary: '#1e293b',
+                    }
+                }
             }
-          }
         }
-      }
     </script>
-    <style>
-      body {
-        font-family: 'Noto Sans KR', sans-serif;
-        background-color: #f8fafc;
-      }
-      /* Custom scrollbar for webkit */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
-      }
-    </style>
-<script type="importmap">
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Import Map -->
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "@google/genai": "https://esm.sh/@google/genai",
+    "lucide-react": "https://esm.sh/lucide-react@0.292.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
     "vite": "https://esm.sh/vite@^7.3.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
-  <body>
+<body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+    <!-- Application Logic -->
+    <script type="text/babel" data-type="module">
+        import React, { useState, useMemo, useEffect } from 'react';
+        import ReactDOM from 'react-dom/client';
+        import { GoogleGenAI, Type } from '@google/genai';
+        import { 
+            Search, ShoppingBag, Menu, BookOpen, PlusCircle, Briefcase, 
+            ShieldCheck, ClipboardCheck, Bot, FileText, ChevronRight, 
+            Home, ArrowLeft, LayoutGrid, Star, Download, ExternalLink,
+            Sparkles, Loader2, X, Plus, Upload, Link as LinkIcon, Globe,
+            User as UserIcon, Coffee, Heart
+        } from 'lucide-react';
+
+        // ----------------------------------------------------------------------
+        // 1. GLOBAL & CONSTANTS
+        // ----------------------------------------------------------------------
+        
+        // Google Apps Script에서 주입된 API KEY
+        const API_KEY = "<?= API_KEY ?>";
+
+        const BOOKS = [
+          {
+            id: 1,
+            title: "건설현장 안전관리 매뉴얼 V1.0",
+            author: "안전관리팀",
+            category: "건설안전",
+            subcategory: "메뉴얼",
+            rating: 4.8,
+            description: "현장에서 즉시 적용 가능한 안전관리 핵심 매뉴얼입니다.\n중대재해처벌법 대응 가이드라인이 포함되어 있습니다. (샘플 파일)",
+            fileUrl: "data:text/plain;charset=utf-8," + encodeURIComponent("건설현장 안전관리 매뉴얼 샘플 내용입니다. 실제 파일은 PDF 등으로 제공됩니다."),
+            fileName: "건설현장_안전관리_매뉴얼.txt",
+            isBestSeller: true,
+            isNew: false
+          },
+          {
+            id: 2,
+            title: "공사일보 자동화 엑셀 서식",
+            author: "김공무",
+            category: "건설공무",
+            subcategory: "서식",
+            rating: 4.5,
+            description: "복잡한 공사일보 작성을 10분으로 단축시켜주는 자동화 엑셀 서식입니다.\n날씨, 인원, 장비 현황 자동 집계 기능 포함.",
+            externalUrl: "https://www.google.com", 
+            isBestSeller: false,
+            isNew: true
+          },
+          {
+            id: 3,
+            title: "2024년 표준시방서 개정판",
+            author: "국토교통부",
+            category: "건설품질",
+            subcategory: "메뉴얼",
+            rating: 5.0,
+            description: "최신 개정된 표준시방서 모음집입니다.\n품질관리 기준 및 시험 방법이 상세히 수록되어 있습니다.",
+            fileUrl: "data:text/plain;charset=utf-8," + encodeURIComponent("2024년 표준시방서 개정판 샘플 텍스트입니다."),
+            fileName: "2024_표준시방서_개정판.txt",
+            isBestSeller: true,
+            isNew: true
+          },
+          {
+            id: 4,
+            title: "ChatGPT 건설 실무 활용 가이드",
+            author: "스마트건설팀",
+            category: "AI 자동화",
+            subcategory: "메뉴얼",
+            rating: 4.9,
+            description: "생성형 AI를 활용하여 시방서 검토, 공문 작성 시간을 획기적으로 단축하는 프롬프트 모음집입니다.",
+            fileUrl: "data:text/plain;charset=utf-8," + encodeURIComponent("ChatGPT 건설 실무 활용 가이드 샘플입니다."),
+            fileName: "ChatGPT_건설_활용_가이드.txt",
+            isBestSeller: false,
+            isNew: true
+          }
+        ];
+
+        const CATEGORIES = ["전체", "건설공무", "건설안전", "건설품질", "AI 자동화"];
+        const SUB_CATEGORIES = ["메뉴얼", "서식"];
+
+        // ----------------------------------------------------------------------
+        // 2. SERVICES
+        // ----------------------------------------------------------------------
+
+        // Initialize Gemini
+        let ai = null;
+        if (API_KEY) {
+            ai = new GoogleGenAI({ apiKey: API_KEY });
+        }
+
+        const modelId = "gemini-2.5-flash";
+
+        const generateBookDescription = async (title, author, category, subcategory) => {
+          if (!API_KEY || !ai) {
+            console.warn("API Key is missing.");
+            return "API 키가 설정되지 않아(스크립트 속성) 설명을 생성할 수 없습니다.";
+          }
+
+          const prompt = `
+            당신은 건설 분야 전문 도서 및 문서의 전문 카피라이터입니다.
+            다음 문서 정보를 바탕으로 구매자의 필요성을 자극하는 명확하고 신뢰감 있는 소개글을 작성해주세요.
+
+            문서 제목: ${title}
+            작성자: ${author}
+            카테고리: ${category}
+            세부 분류: ${subcategory}
+
+            요구사항:
+            1. 3~4문장의 전문적이고 정중한 한국어로 작성할 것.
+            2. 실무에 어떻게 도움이 되는지 구체적인 효용을 강조할 것.
+            3. 건설/안전 관련 적절한 이모지를 1~2개 포함할 것.
+            4. 신뢰감을 주는 어조를 사용할 것.
+          `;
+
+          try {
+            const result = await ai.models.generateContent({
+              model: modelId,
+              contents: prompt,
+              config: { temperature: 0.7 }
+            });
+            return result.text || "설명을 생성할 수 없습니다.";
+          } catch (error) {
+            console.error("Gemini API Error:", error);
+            throw error;
+          }
+        };
+
+        const getAIRecommendations = async (query, books) => {
+          if (!API_KEY || !ai) {
+            throw new Error("API Key is missing. Please set Script Properties.");
+          }
+
+          const booksList = books.map(b => 
+            `ID: ${b.id}, 제목: ${b.title}, 저자: ${b.author}, 카테고리: ${b.category} > ${b.subcategory}, 설명: ${b.description}`
+          ).join("\n");
+
+          const prompt = `
+            사용자의 요청에 맞춰 다음 건설 관련 도서/문서 목록 중에서 가장 적절한 자료를 추천해주세요.
+            
+            사용자 요청: "${query}"
+
+            자료 목록:
+            ${booksList}
+          `;
+
+          try {
+            const result = await ai.models.generateContent({
+              model: modelId,
+              contents: prompt,
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    recommendations: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          bookId: { type: Type.INTEGER },
+                          reason: { type: Type.STRING },
+                        },
+                        required: ["bookId", "reason"],
+                      },
+                    },
+                    summary: { type: Type.STRING },
+                  },
+                  required: ["recommendations", "summary"],
+                },
+              },
+            });
+
+            if (result.text) {
+              return JSON.parse(result.text);
+            }
+            throw new Error("No response text");
+          } catch (error) {
+            console.error("Gemini API Error (Recommendations):", error);
+            throw error;
+          }
+        };
+
+        // ----------------------------------------------------------------------
+        // 3. COMPONENTS
+        // ----------------------------------------------------------------------
+
+        const BookCard = ({ book, onClick }) => {
+          const handleDownload = (e) => {
+            e.stopPropagation();
+            if (book.fileUrl) {
+              const a = document.createElement('a');
+              a.href = book.fileUrl;
+              a.download = book.fileName || book.title;
+              a.style.display = 'none';
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => document.body.removeChild(a), 100);
+            } else if (book.externalUrl) {
+              window.open(book.externalUrl, '_blank');
+            } else {
+              onClick();
+            }
+          };
+
+          return (
+            <div 
+              onClick={onClick}
+              className="group relative bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full cursor-pointer hover:-translate-y-1"
+            >
+              <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                {book.isBestSeller && (
+                  <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full shadow-sm">
+                    인기자료
+                  </span>
+                )}
+                {book.isNew && (
+                  <span className="bg-emerald-400 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm">
+                    최신
+                  </span>
+                )}
+              </div>
+              <div className="relative aspect-[3/4] overflow-hidden bg-gray-200">
+                <img
+                  src={`https://picsum.photos/seed/${book.id}/300/400`} 
+                  alt={book.title}
+                  className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+              </div>
+              <div className="p-4 flex flex-col flex-grow">
+                <div className="text-xs text-indigo-600 font-semibold mb-1 uppercase tracking-wide flex items-center gap-1">
+                  <span>{book.category}</span>
+                  <span className="text-gray-300">•</span>
+                  <span>{book.subcategory}</span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 leading-tight mb-1 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                  {book.title}
+                </h3>
+                <p className="text-sm text-gray-500 mb-3">{book.author}</p>
+                <div className="flex items-center gap-1 mb-3">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-medium text-gray-700">{book.rating || "New"}</span>
+                </div>
+                <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
+                    무료
+                  </span>
+                  <button 
+                    onClick={handleDownload}
+                    className="p-2 rounded-full bg-gray-50 hover:bg-indigo-600 hover:text-white text-gray-600 transition-colors" 
+                  >
+                    {book.externalUrl ? <ExternalLink className="w-5 h-5" /> : <Download className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const AIRecommender = ({ onRecommend, isOpen, onClose }) => {
+          const [query, setQuery] = useState('');
+          const [isLoading, setIsLoading] = useState(false);
+          const [error, setError] = useState(null);
+
+          const handleSubmit = async (e) => {
+            e.preventDefault();
+            if (!query.trim()) return;
+            setIsLoading(true);
+            setError(null);
+            try {
+              const result = await getAIRecommendations(query, BOOKS);
+              onRecommend(result);
+              setQuery(''); 
+              onClose();
+            } catch (err) {
+              setError("AI 추천을 불러오는 중 오류가 발생했습니다. (API Key 설정을 확인해주세요)");
+            } finally {
+              setIsLoading(false);
+            }
+          };
+
+          if (!isOpen) return null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+                <div className="bg-indigo-600 p-6 flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2 text-white mb-2">
+                      <Sparkles className="w-6 h-6 animate-pulse" />
+                      <h2 className="text-2xl font-bold">AI 도서 큐레이터</h2>
+                    </div>
+                    <p className="text-indigo-100 text-sm">
+                      당신의 기분, 상황, 읽고 싶은 스타일을 말해주세요. <br/>
+                      Gemini가 최고의 책을 찾아드립니다.
+                    </p>
+                  </div>
+                  <button onClick={onClose} className="text-indigo-200 hover:text-white transition-colors">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="p-6">
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    <div>
+                      <label htmlFor="ai-query" className="block text-sm font-medium text-gray-700 mb-1">
+                        어떤 책을 찾으세요?
+                      </label>
+                      <textarea
+                        id="ai-query"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="예: 주말에 읽기 좋은 힐링되는 소설 추천해줘."
+                        className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none h-32 text-gray-900 placeholder:text-gray-400"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    {error && (
+                      <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={isLoading || !query.trim()}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>분석 중...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-5 h-5" />
+                          <span>추천 받기</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                  <div className="mt-6 pt-6 border-t border-gray-100">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">추천 검색어</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {["가볍게 읽기 좋은 추리 소설", "직장인 자기계발서", "잠들기 전 힐링 에세이", "미래 기술 트렌드"].map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => setQuery(tag)}
+                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-full transition-colors"
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const AddBookModal = ({ isOpen, onClose, onAdd }) => {
+          const [isGenerating, setIsGenerating] = useState(false);
+          const [uploadType, setUploadType] = useState('file');
+          const [selectedFile, setSelectedFile] = useState(null);
+          
+          const [formData, setFormData] = useState({
+            title: '',
+            author: '',
+            category: CATEGORIES[1], 
+            subcategory: SUB_CATEGORIES[0],
+            description: '',
+            externalUrl: ''
+          });
+
+          if (!isOpen) return null;
+
+          const handleGenerateDescription = async () => {
+            if (!formData.title || !formData.author) {
+              alert("AI 설명을 생성하려면 제목과 저자를 먼저 입력해주세요.");
+              return;
+            }
+            setIsGenerating(true);
+            try {
+              const description = await generateBookDescription(
+                formData.title, 
+                formData.author, 
+                formData.category,
+                formData.subcategory
+              );
+              setFormData(prev => ({ ...prev, description }));
+            } catch (error) {
+              alert("설명 생성 중 오류가 발생했습니다. (API Key 확인 필요)");
+            } finally {
+              setIsGenerating(false);
+            }
+          };
+
+          const handleFileChange = (e) => {
+            if (e.target.files && e.target.files[0]) {
+              setSelectedFile(e.target.files[0]);
+            }
+          };
+
+          const handleSubmit = (e) => {
+            e.preventDefault();
+            if (!formData.title) return alert("제목을 입력해주세요.");
+            if (uploadType === 'file' && !selectedFile) return alert("파일을 업로드해주세요.");
+            if (uploadType === 'link' && !formData.externalUrl) return alert("링크 주소를 입력해주세요.");
+
+            let fileUrl = undefined;
+            let fileName = undefined;
+            
+            if (uploadType === 'file' && selectedFile) {
+                fileUrl = URL.createObjectURL(selectedFile);
+                fileName = selectedFile.name;
+            }
+
+            const newBook = {
+              id: Date.now(),
+              title: formData.title,
+              author: formData.author,
+              category: formData.category,
+              subcategory: formData.subcategory,
+              rating: 0,
+              description: formData.description,
+              fileUrl: fileUrl,
+              fileName: fileName,
+              externalUrl: uploadType === 'link' ? formData.externalUrl : undefined,
+              isNew: true
+            };
+
+            onAdd(newBook);
+            setFormData({
+                title: '',
+                author: '',
+                category: CATEGORIES[1],
+                subcategory: SUB_CATEGORIES[0],
+                description: '',
+                externalUrl: ''
+            });
+            setSelectedFile(null);
+            setUploadType('file');
+            onClose();
+          };
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+                <div className="bg-indigo-600 p-6 flex justify-between items-center text-white sticky top-0 z-10">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <Plus className="w-6 h-6" />
+                    새로운 자료 등록
+                  </h2>
+                  <button onClick={onClose} className="hover:bg-indigo-500 p-1 rounded-full transition-colors">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
+                    <input 
+                      required
+                      type="text" 
+                      className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      value={formData.title}
+                      onChange={e => setFormData({...formData, title: e.target.value})}
+                      placeholder="자료 제목을 입력하세요"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">등록자</label>
+                    <input 
+                      required
+                      type="text" 
+                      className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      value={formData.author}
+                      onChange={e => setFormData({...formData, author: e.target.value})}
+                      placeholder="이름/부서"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">카테고리</label>
+                      <select 
+                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={formData.category}
+                        onChange={e => setFormData({...formData, category: e.target.value})}
+                      >
+                        {CATEGORIES.filter(c => c !== "전체").map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">세부 카테고리</label>
+                      <select 
+                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={formData.subcategory}
+                        onChange={e => setFormData({...formData, subcategory: e.target.value})}
+                      >
+                        {SUB_CATEGORIES.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">등록 방식</label>
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        <button
+                            type="button"
+                            onClick={() => setUploadType('file')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${
+                                uploadType === 'file' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <FileText className="w-4 h-4" />
+                            파일 직접 업로드
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setUploadType('link')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${
+                                uploadType === 'link' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <LinkIcon className="w-4 h-4" />
+                            외부 링크 연결
+                        </button>
+                    </div>
+                  </div>
+                  {uploadType === 'file' && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors relative">
+                            <input 
+                                type="file"
+                                onChange={handleFileChange}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div className="flex flex-col items-center justify-center gap-2 text-gray-500">
+                                <Upload className="w-8 h-8 text-indigo-400" />
+                                {selectedFile ? (
+                                    <span className="text-sm font-semibold text-indigo-600">{selectedFile.name}</span>
+                                ) : (
+                                    <span className="text-sm">클릭하여 파일 업로드 (PDF, HWP, XLS 등)</span>
+                                )}
+                            </div>
+                        </div>
+                      </div>
+                  )}
+                  {uploadType === 'link' && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="relative">
+                            <Globe className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+                            <input 
+                                type="url"
+                                value={formData.externalUrl}
+                                onChange={e => setFormData({...formData, externalUrl: e.target.value})}
+                                placeholder="https://example.com/file..."
+                                className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1 pl-1">구글 드라이브, 관공서, 회사 홈페이지 등 외부 링크를 입력하세요.</p>
+                      </div>
+                  )}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium text-gray-700">자료 설명</label>
+                      <button 
+                        type="button"
+                        onClick={handleGenerateDescription}
+                        disabled={isGenerating}
+                        className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold px-2 py-1 rounded-md hover:bg-indigo-50 transition-colors"
+                      >
+                        {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        AI로 설명 자동 생성
+                      </button>
+                    </div>
+                    <textarea 
+                      required
+                      rows={5}
+                      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none resize-none text-sm"
+                      value={formData.description}
+                      onChange={e => setFormData({...formData, description: e.target.value})}
+                      placeholder="자료에 대한 설명을 입력하거나 AI 기능을 사용해보세요."
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    className="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-200"
+                  >
+                    자료 등록하기
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+        };
+
+        const BookDetailModal = ({ book, isOpen, onClose }) => {
+          const [isCoffeeSelected, setIsCoffeeSelected] = useState(false);
+          if (!isOpen || !book) return null;
+
+          const handleAction = () => {
+            if (book.externalUrl) {
+               window.open(book.externalUrl, '_blank');
+               if (isCoffeeSelected) setTimeout(() => alert(`따뜻한 커피 한 잔 후원 감사합니다! ☕\n제작자에게 큰 힘이 됩니다.`), 500);
+            } else if (book.fileUrl) {
+              const a = document.createElement('a');
+              a.href = book.fileUrl;
+              a.download = book.fileName || book.title; 
+              a.style.display = 'none'; 
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => document.body.removeChild(a), 100);
+              if (isCoffeeSelected) setTimeout(() => alert(`따뜻한 커피 한 잔 후원 감사합니다! ☕\n제작자에게 큰 힘이 됩니다.`), 500);
+            } else {
+                alert("이용 가능한 파일이나 링크가 없습니다.");
+                return;
+            }
+            setIsCoffeeSelected(false);
+          };
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+              <div 
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-200 max-h-[90vh]" 
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="md:w-2/5 h-64 md:h-auto bg-gray-100 relative">
+                   <img
+                    src={`https://picsum.photos/seed/${book.id}/400/600`} 
+                    alt={book.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {book.isBestSeller && (
+                    <div className="absolute top-4 left-4 bg-yellow-400 text-yellow-900 font-bold px-3 py-1 rounded-full shadow-lg">인기자료</div>
+                  )}
+                </div>
+                <div className="md:w-3/5 p-8 flex flex-col overflow-y-auto">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <div className="flex gap-2 mb-2">
+                        <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold uppercase tracking-wider">{book.category}</span>
+                        <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold uppercase tracking-wider">{book.subcategory}</span>
+                      </div>
+                      <h2 className="text-3xl font-black text-slate-900 leading-tight mb-2">{book.title}</h2>
+                      <div className="flex items-center gap-4 text-gray-500 text-sm">
+                        <span className="flex items-center gap-1"><UserIcon className="w-4 h-4"/> {book.author}</span>
+                        <span className="flex items-center gap-1 text-yellow-500 font-bold"><Star className="w-4 h-4 fill-current"/> {book.rating || "New"}</span>
+                      </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                  </div>
+
+                  <div className="prose prose-slate mb-8 flex-grow">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-indigo-500"/>자료 소개
+                    </h3>
+                    <p className="text-gray-600 leading-relaxed whitespace-pre-line">{book.description}</p>
+                    {book.fileName && (
+                        <div className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm text-gray-600">
+                            <FileText className="w-4 h-4 text-gray-400"/>첨부파일: <span className="font-medium text-gray-900">{book.fileName}</span>
+                        </div>
+                    )}
+                     {book.externalUrl && (
+                        <div className="flex items-center gap-2 mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700">
+                            <ExternalLink className="w-4 h-4"/>외부 링크: <span className="font-medium truncate flex-1">{book.externalUrl}</span>
+                        </div>
+                    )}
+                  </div>
+                  
+                  <div className="mt-auto">
+                    <div className="mb-4 p-4 bg-orange-50 rounded-xl border border-orange-100 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-sm font-bold text-orange-800">
+                          <Heart className="w-4 h-4 fill-orange-500 text-orange-500" />제작자 응원하기
+                        </label>
+                        {isCoffeeSelected && <span className="text-xs text-orange-600 font-medium animate-pulse">후원이 선택되었습니다!</span>}
+                      </div>
+                      <button 
+                        onClick={() => setIsCoffeeSelected(!isCoffeeSelected)}
+                        className={`w-full py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 border ${
+                            isCoffeeSelected 
+                            ? 'bg-orange-500 text-white border-orange-600 shadow-md ring-2 ring-orange-200 scale-[1.02]' 
+                            : 'bg-white text-gray-600 border-orange-200 hover:bg-orange-100 hover:text-orange-700'
+                        }`}
+                      >
+                        <Coffee className={`w-5 h-5 ${isCoffeeSelected ? 'animate-bounce' : ''}`} />
+                        {isCoffeeSelected ? '커피 한 잔을 선물합니다 (1,500원)' : '커피 한 잔 선물하기 (1,500원)'}
+                      </button>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100 flex items-center justify-end">
+                      <button 
+                        onClick={handleAction}
+                        className={`w-full px-6 py-4 font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 ${
+                            isCoffeeSelected ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-200' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
+                        }`}
+                      >
+                        {book.externalUrl ? <ExternalLink className="w-5 h-5" /> : <Download className="w-5 h-5" />}
+                        {isCoffeeSelected ? (book.externalUrl ? '후원하고 사이트 이동' : '후원하고 다운로드') : (book.externalUrl ? '사이트 바로가기' : '무료 다운로드')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // ----------------------------------------------------------------------
+        // 4. MAIN APP
+        // ----------------------------------------------------------------------
+
+        const getCategoryIcon = (category) => {
+          switch (category) {
+            case '건설공무': return <Briefcase className="w-8 h-8 md:w-12 md:h-12 text-indigo-500" />;
+            case '건설안전': return <ShieldCheck className="w-8 h-8 md:w-12 md:h-12 text-emerald-500" />;
+            case '건설품질': return <ClipboardCheck className="w-8 h-8 md:w-12 md:h-12 text-blue-500" />;
+            case 'AI 자동화': return <Bot className="w-8 h-8 md:w-12 md:h-12 text-purple-500" />;
+            default: return <LayoutGrid className="w-8 h-8 md:w-12 md:h-12 text-gray-500" />;
+          }
+        };
+
+        const App = () => {
+          const [books, setBooks] = useState(BOOKS);
+          const [searchQuery, setSearchQuery] = useState("");
+          const [selectedCategory, setSelectedCategory] = useState(null);
+          const [selectedSubcategory, setSelectedSubcategory] = useState(null);
+          const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false);
+          const [selectedBook, setSelectedBook] = useState(null);
+          const [isAIRecommenderOpen, setIsAIRecommenderOpen] = useState(false); // AI Recommender Modal State
+
+          const currentView = useMemo(() => {
+            if (searchQuery) return 'search';
+            if (selectedCategory && selectedSubcategory) return 'list';
+            if (selectedCategory) return 'subcategory';
+            return 'category';
+          }, [searchQuery, selectedCategory, selectedSubcategory]);
+
+          const filteredBooks = useMemo(() => {
+            return books.filter(book => {
+              if (searchQuery) {
+                return book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                       book.author.toLowerCase().includes(searchQuery.toLowerCase());
+              }
+              const matchesCategory = selectedCategory ? book.category === selectedCategory : true;
+              const matchesSubcategory = selectedSubcategory ? book.subcategory === selectedSubcategory : true;
+              return matchesCategory && matchesSubcategory;
+            });
+          }, [books, searchQuery, selectedCategory, selectedSubcategory]);
+
+          const displayBooks = [...filteredBooks].reverse();
+
+          const handleAddBook = (newBook) => setBooks(prev => [...prev, newBook]);
+
+          const resetNavigation = () => {
+            setSelectedCategory(null);
+            setSelectedSubcategory(null);
+            setSearchQuery("");
+          };
+
+          const handleBack = () => {
+            if (currentView === 'list') setSelectedSubcategory(null);
+            else if (currentView === 'subcategory') setSelectedCategory(null);
+            else if (currentView === 'search') setSearchQuery("");
+          };
+
+          const handleAIRecommend = (result) => {
+             // Handle recommendation results
+             // For simplicity, we could just show the book details if only one, or filter the list
+             // Here we'll just alert the summary for now or implement a filter if the book IDs match
+             alert("AI 추천 결과:\n" + result.summary);
+          };
+
+          return (
+            <div className="min-h-screen flex flex-col text-slate-900 bg-slate-50">
+              <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100">
+                <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+                  <div className="flex items-center gap-2 cursor-pointer" onClick={resetNavigation}>
+                    <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+                      <BookOpen className="w-5 h-5" />
+                    </div>
+                    <span className="text-xl font-bold tracking-tight text-indigo-900">건설<span className="text-indigo-600">자료실</span></span>
+                  </div>
+                  <div className="hidden md:flex items-center gap-8 font-medium text-gray-600">
+                    <button onClick={resetNavigation} className="hover:text-indigo-600 transition-colors">홈</button>
+                    <button className="hover:text-indigo-600 transition-colors">인기 자료</button>
+                    <button className="hover:text-indigo-600 transition-colors">공지사항</button>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="relative hidden sm:block">
+                      <input 
+                        type="text" 
+                        placeholder="자료명, 작성자 검색" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 pr-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48 transition-all focus:w-64"
+                      />
+                      <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                    </div>
+                    
+                    {/* AI Recommender Button */}
+                    <button
+                        onClick={() => setIsAIRecommenderOpen(true)}
+                        className="flex items-center gap-2 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full text-sm font-bold transition-colors"
+                        title="AI 도서 추천"
+                    >
+                        <Bot className="w-4 h-4" />
+                        <span className="hidden md:inline">AI 추천</span>
+                    </button>
+
+                    <button 
+                      onClick={() => setIsAddBookModalOpen(true)}
+                      className="hidden md:flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-sm font-medium transition-colors shadow-md shadow-indigo-200"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>자료 등록</span>
+                    </button>
+                  </div>
+                </div>
+              </nav>
+
+              <header className={`relative bg-gradient-to-r from-slate-900 to-indigo-900 text-white overflow-hidden transition-all duration-500 ${currentView === 'category' ? 'py-16 md:py-20' : 'py-8 md:py-10'}`}>
+                <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1503387762-592deb58ef4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center mix-blend-overlay"></div>
+                <div className="container mx-auto px-4 relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="max-w-xl text-center md:text-left">
+                    {currentView === 'category' && (
+                      <div className="inline-block px-3 py-1 bg-emerald-500/30 border border-emerald-400/30 rounded-full text-emerald-200 text-xs font-semibold mb-4 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2">
+                        건설인을 위한 지식 공유 플랫폼
+                      </div>
+                    )}
+                    <h1 className={`${currentView === 'category' ? 'text-3xl md:text-5xl' : 'text-2xl md:text-3xl'} font-black mb-2 leading-tight`}>
+                      {currentView === 'category' ? <>현장 노하우와 자료 공유</> : selectedCategory || "자료 검색"}
+                    </h1>
+                    {currentView === 'category' && (
+                      <p className="text-base md:text-lg text-indigo-100 mb-6 leading-relaxed">
+                        필요한 업무 카테고리를 선택하여 자료를 찾아보세요.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </header>
+
+              <main className="container mx-auto px-4 py-8 flex-grow" id="main-content">
+                <div className="mb-8 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <button onClick={resetNavigation} className="hover:text-indigo-600 flex items-center gap-1">
+                      <Home className="w-4 h-4" /><span>홈</span>
+                    </button>
+                    {selectedCategory && (
+                      <>
+                        <ChevronRight className="w-4 h-4" />
+                        <button onClick={() => setSelectedSubcategory(null)} className={`hover:text-indigo-600 ${!selectedSubcategory ? 'font-bold text-indigo-900' : ''}`}>
+                          {selectedCategory}
+                        </button>
+                      </>
+                    )}
+                    {selectedSubcategory && (
+                      <>
+                        <ChevronRight className="w-4 h-4" /><span className="font-bold text-indigo-900">{selectedSubcategory}</span>
+                      </>
+                    )}
+                    {searchQuery && (
+                      <>
+                        <ChevronRight className="w-4 h-4" /><span className="font-bold text-indigo-900">"{searchQuery}" 검색 결과</span>
+                      </>
+                    )}
+                  </div>
+                  {(currentView !== 'category' && !searchQuery) && (
+                    <button onClick={handleBack} className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-white hover:shadow-sm">
+                      <ArrowLeft className="w-4 h-4" />이전으로
+                    </button>
+                  )}
+                </div>
+
+                {currentView === 'category' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                      <LayoutGrid className="w-5 h-5 text-indigo-600" />분야를 선택하세요
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {CATEGORIES.filter(c => c !== "전체").map((category) => (
+                        <div 
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 cursor-pointer transition-all duration-300 hover:-translate-y-1 flex flex-col items-center text-center gap-4"
+                        >
+                          <div className="p-4 bg-gray-50 rounded-full group-hover:bg-indigo-50 transition-colors duration-300">
+                            {getCategoryIcon(category)}
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{category}</h3>
+                            <p className="text-sm text-gray-500 mt-2">{category} 관련 표준 서식 및 메뉴얼</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-16">
+                      <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 text-indigo-600" />추천 인기 자료
+                      </h2>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                         {books.filter(b => b.isBestSeller).slice(0, 4).map(book => (
+                           <BookCard key={book.id} book={book} onClick={() => setSelectedBook(book)} />
+                         ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentView === 'subcategory' && (
+                  <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                     <div className="text-center mb-10">
+                       <span className="inline-block p-4 bg-indigo-50 rounded-full mb-4">{getCategoryIcon(selectedCategory)}</span>
+                       <h2 className="text-2xl font-bold text-slate-900 mb-2">{selectedCategory}</h2>
+                       <p className="text-gray-500">원하시는 자료 유형을 선택해주세요.</p>
+                     </div>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                       {SUB_CATEGORIES.map((sub) => (
+                         <div
+                           key={sub}
+                           onClick={() => setSelectedSubcategory(sub)}
+                           className="group bg-white hover:bg-indigo-600 p-8 rounded-2xl shadow-sm hover:shadow-2xl border border-gray-100 cursor-pointer transition-all duration-300 flex items-center justify-between"
+                         >
+                            <div className="flex items-center gap-4">
+                              <div className="p-3 bg-indigo-50 rounded-lg group-hover:bg-white/20 transition-colors">
+                                {sub === '메뉴얼' ? <BookOpen className="w-6 h-6 text-indigo-600 group-hover:text-white" /> : <FileText className="w-6 h-6 text-indigo-600 group-hover:text-white" />}
+                              </div>
+                              <div className="text-left">
+                                <h3 className="text-xl font-bold text-slate-900 group-hover:text-white transition-colors">{sub}</h3>
+                                <p className="text-sm text-gray-500 group-hover:text-indigo-100 transition-colors">{selectedCategory} {sub} 모음</p>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-6 h-6 text-gray-300 group-hover:text-white transition-colors" />
+                         </div>
+                       ))}
+                     </div>
+                  </div>
+                )}
+
+                {(currentView === 'list' || currentView === 'search') && (
+                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                          {currentView === 'search' ? <><Search className="w-5 h-5 text-indigo-600"/>검색 결과</> : <><FileText className="w-5 h-5 text-indigo-600"/>자료 목록</>}
+                          <span className="text-sm font-normal text-gray-500 ml-2">({displayBooks.length}개)</span>
+                        </h2>
+                        {currentView === 'list' && (
+                          <div className="flex gap-2">
+                            {SUB_CATEGORIES.map(sub => (
+                              <button 
+                                key={sub}
+                                onClick={() => setSelectedSubcategory(sub)}
+                                className={`px-3 py-1 text-xs rounded-full border transition-colors ${selectedSubcategory === sub ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                              >
+                                {sub}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
+                        {displayBooks.length > 0 ? (
+                          displayBooks.map((book) => (
+                            <BookCard key={book.id} book={book} onClick={() => setSelectedBook(book)} />
+                          ))
+                        ) : (
+                          <div className="col-span-full py-20 text-center text-gray-500 flex flex-col items-center bg-white rounded-2xl border border-dashed border-gray-200">
+                            <p className="text-xl font-medium mb-2">등록된 자료가 없습니다.</p>
+                            <button onClick={() => setIsAddBookModalOpen(true)} className="px-6 py-3 bg-indigo-50 text-indigo-600 font-semibold rounded-full hover:bg-indigo-100 transition-colors flex items-center gap-2">
+                              <PlusCircle className="w-5 h-5" />자료 등록하기
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                   </div>
+                )}
+              </main>
+
+              <footer className="bg-slate-900 text-slate-300 py-12 border-t border-slate-800 mt-auto">
+                <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
+                  <div className="col-span-1 md:col-span-2">
+                    <div className="flex items-center gap-2 mb-4 text-white">
+                      <BookOpen className="w-6 h-6" />
+                      <span className="text-2xl font-bold tracking-tight">건설자료실</span>
+                    </div>
+                    <p className="text-slate-400 max-w-sm mb-6">건설 현장에 필요한 모든 서식과 메뉴얼. <br/>지식 공유를 통해 더 안전하고 효율적인 현장을 만들어갑니다.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white mb-4">서비스</h4>
+                    <ul className="space-y-2 text-sm">
+                      <li><button onClick={resetNavigation} className="hover:text-white">홈으로</button></li>
+                      <li><button className="hover:text-white">자료 등록</button></li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="container mx-auto px-4 mt-12 pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
+                  &copy; 2024 Construction Archive. Powered by Google Gemini.
+                </div>
+              </footer>
+
+              <AddBookModal isOpen={isAddBookModalOpen} onClose={() => setIsAddBookModalOpen(false)} onAdd={handleAddBook} />
+              <BookDetailModal book={selectedBook} isOpen={!!selectedBook} onClose={() => setSelectedBook(null)} />
+              <AIRecommender isOpen={isAIRecommenderOpen} onClose={() => setIsAIRecommenderOpen(false)} onRecommend={handleAIRecommend} />
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+    </script>
+</body>
 </html>

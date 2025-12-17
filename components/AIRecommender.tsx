@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Send, Loader2, X } from 'lucide-react';
+import { Sparkles, Loader2, X } from 'lucide-react';
 import { getAIRecommendations } from '../services/geminiService';
 import { BOOKS } from '../constants';
 import { AIRecommendationResponse } from '../types';

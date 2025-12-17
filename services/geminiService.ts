@@ -1,8 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Book, AIRecommendationResponse } from "../types";
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Access the API key injected by Vite build process
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+// Use the key if available, otherwise it might fail at runtime if not configured in Netlify
+const ai = new GoogleGenAI({ apiKey: API_KEY || "" });
 
 const modelId = "gemini-2.5-flash";
 
@@ -12,8 +15,9 @@ export const generateBookDescription = async (
   category: string,
   subcategory: string
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API Key is missing");
+  if (!API_KEY) {
+    console.warn("API Key is missing. AI features will not work.");
+    return "API 키가 설정되지 않아 설명을 생성할 수 없습니다.";
   }
 
   const prompt = `
@@ -53,8 +57,8 @@ export const getAIRecommendations = async (
   query: string,
   books: Book[]
 ): Promise<AIRecommendationResponse> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API Key is missing");
+  if (!API_KEY) {
+    throw new Error("API Key is missing. Please check your environment configuration.");
   }
 
   const booksList = books.map(b => 
